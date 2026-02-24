@@ -21,7 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         `${AuthService.secretAccessEnv}.publicKey`,
       ),
       ignoreExpiration: false,
-      audience: 'IDENTITY' as Audience,
+      audience: 'Identity' satisfies Audience,
     });
   }
 
@@ -31,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       this.usersService.getByAuth(sid),
       this.sessionService.getSessionByAudience(aud, sid, token),
     ]);
+
     if (!sessionResult.isSuccess || !userResult.isSuccess)
       throw new UnauthorizedException('auth.errors.invalidAccessError');
     return { ...userResult.value, session: sessionResult.value.id };

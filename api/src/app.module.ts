@@ -7,6 +7,7 @@ import { DB_CONNECTIONS } from '@app/common/configuration/constants';
 import { HealthController } from './health.controller';
 import { HotelsModule } from './hotels/hotels.module';
 import { ReservationsModule } from './reservations/reservations.module';
+import { OutboxModule } from './outbox/outbox.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     AuthModule,
     HotelsModule,
     ReservationsModule,
+    OutboxModule,
   ],
   controllers: [HealthController],
   providers: [],

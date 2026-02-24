@@ -1,5 +1,12 @@
 import { AuditableEntity } from '@app/common/database/auditableEntity';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Location } from './locations.entity';
 
 @Entity({
   name: 'hotels',
@@ -17,10 +24,13 @@ export class Hotel extends AuditableEntity {
   })
   name: string;
 
-  @Column('character varying', {
-    name: 'location',
-    length: 255,
+  @Column('integer', {
+    name: 'location_id',
     nullable: false,
   })
-  location: string;
+  locationId: number;
+
+  @ManyToOne(() => Location, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'location_id' })
+  location: Location;
 }

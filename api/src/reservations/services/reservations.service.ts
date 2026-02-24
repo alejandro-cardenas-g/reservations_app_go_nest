@@ -1,12 +1,14 @@
 import { Result, TResult } from '@app/common/classes';
 import { Injectable } from '@nestjs/common';
 import { RoomsRepository } from '../../hotels/repositories/rooms.repository';
-import { Reservation } from '../entities/reservation.entity';
-import { ReservationsRepository } from '../repositories/reservations.repository';
 import {
   ICheckAvailability,
+  IReservation,
   IReservationCreated,
 } from '../contracts/reservations.contracts';
+import { GetReservationsDto } from '../dtos/get-reservations.dto';
+import { ReservationsRepository } from '../repositories/reservations.repository';
+import { ReservationResultUtil } from '../utils/reservationResult.util';
 
 @Injectable()
 export class ReservationsService {
@@ -54,7 +56,7 @@ export class ReservationsService {
     return Result.Success(result.value);
   }
 
-  async getById(id: string, guestId: string): Promise<TResult<Reservation>> {
+  async getById(id: string, guestId: string): Promise<TResult<IReservation>> {
     const reservation = await this.reservationsRepository.findByIdAndGuestId(
       id,
       guestId,
@@ -62,10 +64,19 @@ export class ReservationsService {
     if (!reservation) {
       return Result.Failure('Reservation not found', 'RESOURCE_NOT_FOUND');
     }
-    return Result.Success(reservation);
+    return Result.Success(ReservationResultUtil.fromEntity(reservation));
   }
 
-  async listByGuest(guestId: string): Promise<Reservation[]> {
-    return this.reservationsRepository.findByGuestId(guestId);
+  async listByGuest(
+    guestId: string,
+    dto: GetReservationsDto,
+  ): Promise<IReservation[]> {
+    const reservations = await this.reservationsRepository.findByGuestId(
+      guestId,
+      dto,
+    );
+    return reservations.map((reservation) =>
+      ReservationResultUtil.fromEntity(reservation),
+    );
   }
 }

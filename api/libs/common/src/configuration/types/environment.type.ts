@@ -5,4 +5,4 @@ export type DatabaseEnvironments =
   | 'DB_PASSWORD'
   | 'DB_NAME';
 
-export type ServerEnvironments = 'PORT' | 'NODE_ENV';
+export type ServerEnvironments = 'PORT' | 'NODE_ENV' | 'HOST_TOKEN';

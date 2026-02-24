@@ -1,17 +1,26 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Post,
+  Put,
   Query,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { Response } from 'express';
+import { CallbackDto } from '../dtos/callback.dto';
 import { LoginDto } from '../dtos/login.dto';
 import { Oauth2Service } from '../services/oauth2.service';
-import { CallbackDto } from '../dtos/callback.dto';
-import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { CookieAuthGuard } from '../guards/cookieAuth.guard';
+import { GetUser } from '@app/common/auth/decorators';
+import { AuthUser } from '@app/common/types';
 
 @Controller({
   path: 'auth',
@@ -33,13 +42,20 @@ export class AuthController {
     return { url: result.value };
   }
 
-  @Get('callback')
-  async callback(
-    @Query() query: CallbackDto,
+  @Get('token')
+  async token(
+    @Query('state') state: string,
+    @Query('code') code: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { code, state } = query;
-    const result = await this.oauth2Service.callback(code, state);
+    const payload = plainToInstance(CallbackDto, { code, state });
+    const errors = await validate(payload);
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    const result = await this.oauth2Service.callback(code, payload.state);
 
     if (!result.isSuccess) throw new UnauthorizedException(result.error);
 
@@ -49,7 +65,45 @@ export class AuthController {
       result.value.refreshTokenExpiresAt,
     );
 
-    return { tokens: result.value };
+    return result.value;
+  }
+
+  @Get('callback')
+  async callback(@Query('state') state: string, @Query('code') code: string) {
+    const payload = plainToInstance(CallbackDto, { code, state });
+    const errors = await validate(payload);
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    const url = new URL(this.configService.getOrThrow<string>('HOST_TOKEN'));
+    url.searchParams.set('code', code);
+    url.searchParams.set('state', state);
+    return {
+      url: url.toString(),
+    };
+  }
+
+  @UseGuards(CookieAuthGuard)
+  @Put('refresh-token')
+  refreshToken(@GetUser() user: AuthUser) {
+    const result = this.oauth2Service.refreshToken(user);
+    return result;
+  }
+
+  @UseGuards(CookieAuthGuard)
+  @Delete('logout')
+  async logout(
+    @GetUser() user: AuthUser,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const cookieName =
+      this.configService.getOrThrow<string>('COOKIE_AUTH_NAME');
+    response.clearCookie(cookieName);
+    await this.oauth2Service.signOut(user);
+    response.status(204);
+    return {};
   }
 
   private setRefreshTokenCookie(
@@ -57,7 +111,8 @@ export class AuthController {
     refreshToken: string,
     refreshTokenExpiresAt: Date,
   ) {
-    const cookieName = this.configService.getOrThrow<string>('COOKIE_NAME');
+    const cookieName =
+      this.configService.getOrThrow<string>('COOKIE_AUTH_NAME');
     const isProduction =
       this.configService.getOrThrow<string>('NODE_ENV') === 'production';
     res.cookie(cookieName, refreshToken, {

@@ -3,10 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { OAuthProvider } from '../types/oauthProviders.type';
 import { ManagerProvider } from './oauth/manager.provider';
 import { UsersService } from './users.service';
-import { GetAuthAccessTokensResult } from '../contracts/auth.contracts';
+import {
+  AccessTokenResult,
+  GetAuthAccessTokensResult,
+} from '../contracts/auth.contracts';
 import { SessionsService } from './sessions.service';
 import { AuthService } from './auth.service';
-import { Audience } from '@app/common/types';
+import { Audience, AuthUser } from '@app/common/types';
 
 @Injectable()
 export class Oauth2Service {
@@ -68,7 +71,7 @@ export class Oauth2Service {
     const user = userResult.value;
 
     const session = await this.sessionsService.createSession(
-      'IDENTITY',
+      'Identity' satisfies Audience,
       user.id,
     );
     const tokenResult = this.authService.getAuthTokens({
@@ -83,5 +86,27 @@ export class Oauth2Service {
       );
     }
     return tokenResult;
+  }
+
+  refreshToken(user: AuthUser): AccessTokenResult {
+    const access_token = this.authService.getAccessToken({
+      aud: user.aud,
+      sid: user.id,
+      token: user.session,
+    });
+    return {
+      accessToken: access_token,
+    };
+  }
+
+  async signOut(user: AuthUser): Promise<boolean> {
+    const { aud, id, session } = user;
+
+    await Promise.all([
+      this.sessionsService.revokeToken(session, aud),
+      this.sessionsService.revokeExpTokens(id, aud),
+    ]);
+
+    return true;
   }
 }

@@ -19,6 +19,8 @@ import { Oauth2Service } from './services/oauth2.service';
 import { ManagerProvider } from './services/oauth/manager.provider';
 import { GoogleProvider } from './services/oauth/google.provider';
 import { GithubProvider } from './services/oauth/github.provider';
+import { ApiKeyGuard, JwtAuthGuard } from '@app/common/auth/guards';
+import { CookieAuthGuard } from './guards/cookieAuth.guard';
 
 @Module({
   imports: [
@@ -48,7 +50,11 @@ import { GithubProvider } from './services/oauth/github.provider';
     GithubProvider,
     /** auth classes */
     JwtStrategy,
+    ApiKeyGuard,
+    JwtAuthGuard,
+    CookieAuthGuard,
   ],
+  exports: [],
 })
 export class AuthModule {
   static DatabaseModules() {

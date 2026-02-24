@@ -10,22 +10,33 @@ import { HotelsSeedService } from './services/hotels-seed.service';
 import { RoomsService } from './services/rooms.service';
 import { RoomsSeedService } from './services/rooms-seed.service';
 import { HotelsController } from './controllers/hotels.controller';
+import { LocationsRepository } from './repositories/locations.repository';
+import { LocationsService } from './services/locations.service';
+import { LocationsController } from './controllers/locations.controller';
+import { Location } from './entities/locations.entity';
 
 @Module({
-  imports: [DatabaseModule.forFeature(DB_CONNECTIONS.MAIN, [Hotel, Room])],
-  controllers: [HotelsController],
+  imports: [
+    DatabaseModule.forFeature(
+      DB_CONNECTIONS.MAIN,
+      HotelsModule.DatabaseModules(),
+    ),
+  ],
+  controllers: [HotelsController, LocationsController],
   providers: [
     HotelsRepository,
     RoomsRepository,
+    LocationsRepository,
     HotelsService,
     HotelsSeedService,
     RoomsService,
     RoomsSeedService,
+    LocationsService,
   ],
   exports: [RoomsRepository],
 })
 export class HotelsModule {
   static DatabaseModules() {
-    return [Hotel, Room];
+    return [Hotel, Room, Location];
   }
 }

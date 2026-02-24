@@ -6,8 +6,6 @@ const { DataSource } = require('typeorm');
 
 config();
 
-console.log(process.env.DB_PORT);
-
 const dataSource = new DataSource({
   name: 'main',
   type: 'postgres',

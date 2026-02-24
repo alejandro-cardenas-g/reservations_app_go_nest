@@ -1,9 +1,9 @@
 import { Result, TResult } from '@app/common/classes';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Room } from '../entities/room.entity';
-import { RoomType } from '../types/room-type';
 import { HotelsRepository } from '../repositories/hotels.repository';
 import { RoomsRepository } from '../repositories/rooms.repository';
+import { RoomType } from '../types/room-type';
 
 @Injectable()
 export class RoomsService {
@@ -12,7 +12,10 @@ export class RoomsService {
     private readonly roomsRepository: RoomsRepository,
   ) {}
 
-  async listByHotel(hotelId: string, type?: RoomType): Promise<TResult<Room[]>> {
+  async listByHotel(
+    hotelId: string,
+    type?: RoomType,
+  ): Promise<TResult<Room[]>> {
     const hotel = await this.hotelsRepository.getById(hotelId);
     if (!hotel) {
       return Result.Failure('Hotel not found', 'RESOURCE_NOT_FOUND');

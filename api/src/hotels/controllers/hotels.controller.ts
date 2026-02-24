@@ -1,3 +1,5 @@
+import { ApiKeyGuard, JwtAuthGuard } from '@app/common/auth/guards';
+import { ParseUUIDCustomPipe } from '@app/common/pipes/parseUUIDCustom.pipe';
 import {
   Body,
   Controller,
@@ -8,12 +10,11 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { HotelsService } from '../services/hotels.service';
+import { SearchHotelsDto } from '../dtos/searchHotels.dto';
 import { HotelsSeedService } from '../services/hotels-seed.service';
-import { RoomsService } from '../services/rooms.service';
+import { HotelsService } from '../services/hotels.service';
 import { RoomsSeedService } from '../services/rooms-seed.service';
-import { ApiKeyGuard } from '@app/common/auth/guards';
-import { CreateRoomDto } from '../dtos/create-room.dto';
+import { RoomsService } from '../services/rooms.service';
 import { RoomType } from '../types/room-type';
 
 @Controller({
@@ -28,9 +29,10 @@ export class HotelsController {
     private readonly roomsSeedService: RoomsSeedService,
   ) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  list(@Query('location') location?: string) {
-    return this.hotelsService.list(location);
+  list(@Query() query: SearchHotelsDto) {
+    return this.hotelsService.list(query);
   }
 
   @UseGuards(ApiKeyGuard)
@@ -51,25 +53,12 @@ export class HotelsController {
     return result.value;
   }
 
-  @Post(':hotelId/rooms')
-  async createRoom(
-    @Param('hotelId') hotelId: string,
-    @Body() dto: CreateRoomDto,
-  ) {
-    const result = await this.roomsService.create(
-      hotelId,
-      dto.roomNumber,
-      dto.type,
-    );
-    if (!result.isSuccess) {
-      throw new NotFoundException(result.error);
-    }
-    return result.value;
-  }
-
   @Get(':hotelId')
-  async getById(@Param('hotelId') hotelId: string) {
-    const resultGetById = await this.hotelsService.getById(hotelId);
+  async getById(
+    @Param('hotelId', new ParseUUIDCustomPipe('hotel id is invalid'))
+    hotelId: string,
+  ) {
+    const resultGetById = await this.hotelsService.getWholeById(hotelId);
     if (!resultGetById.isSuccess) {
       throw new NotFoundException(resultGetById.error);
     }

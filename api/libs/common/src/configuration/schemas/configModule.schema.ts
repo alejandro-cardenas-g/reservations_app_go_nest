@@ -8,6 +8,7 @@ export const ConfigModuleSchema = Joi.object<
   Record<DatabaseEnvironments | ServerEnvironments, string>
 >({
   PORT: Joi.number().required(),
+  HOST_TOKEN: Joi.string().required(),
   DB_HOST: Joi.string().required(),
   DB_NAME: Joi.string().required(),
   DB_USER: Joi.string().required(),

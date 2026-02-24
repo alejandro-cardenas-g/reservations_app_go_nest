@@ -1,10 +1,18 @@
 import { DB_CONNECTIONS } from '@app/common/configuration/constants';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Reservation } from '../entities/reservation.entity';
 import { ReservationStatus } from '../types/reservation-status';
 import { Result, TResult } from '@app/common/classes';
+import {
+  EqualFilter,
+  GreaterThanFilter,
+  LowerThanFilter,
+} from '@app/common/filters';
+import { FilterQueryBuilder } from '@app/common/database/utils/filterQueryBuilder.util';
+import { GetReservationsDto } from '../dtos/get-reservations.dto';
+import { AbstractFilter } from '@app/common/filters/abstract.filter';
 
 const ACTIVE_STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED'];
 
@@ -31,19 +39,79 @@ export class ReservationsRepository extends Repository<Reservation> {
     return qb.getExists().then((result) => !!result);
   }
 
-  findByGuestId(guestId: string): Promise<Reservation[]> {
-    return this.find({
-      where: { guestId },
-      order: { checkIn: 'DESC' },
-      relations: ['room'],
-    });
+  findByGuestId(
+    guestId: string,
+    dto: GetReservationsDto,
+  ): Promise<Reservation[]> {
+    const guestIdFilter = new EqualFilter('r.guestId', guestId);
+
+    const filters: AbstractFilter<Record<string, unknown>, unknown>[] = [
+      guestIdFilter,
+    ];
+
+    if (dto.checkIn) {
+      const checkInFilter = new GreaterThanFilter('r.checkIn', dto.checkIn);
+      filters.push(checkInFilter);
+    }
+
+    if (dto.status) {
+      const statusFilter = new EqualFilter('r.status', dto.status);
+      filters.push(statusFilter);
+    }
+
+    if (dto.nextId) {
+      const nextIdFilter = new LowerThanFilter('r.id', dto.nextId, false);
+      filters.push(nextIdFilter);
+    }
+
+    const query = new FilterQueryBuilder<Reservation>(
+      this.createQueryBuilder('r')
+        .select([
+          'r.id',
+          'r.status',
+          'r.checkIn',
+          'r.checkOut',
+          'r.expiresAt',
+          'ro.roomNumber',
+          'ro.type',
+          'ho.name',
+          'lo.name',
+        ])
+        .innerJoin('r.room', 'ro')
+        .innerJoin('ro.hotel', 'ho')
+        .innerJoin('ho.location', 'lo'),
+    );
+
+    return query.withQuery(filters).orderBy('r.id', 'DESC').getMany();
   }
 
   findByIdAndGuestId(id: string, guestId: string): Promise<Reservation | null> {
-    return this.findOne({
-      where: { id, guestId },
-      relations: ['room'],
-    });
+    const guestIdFilter = new EqualFilter('r.guestId', guestId);
+
+    const filters: AbstractFilter<Record<string, unknown>, unknown>[] = [
+      guestIdFilter,
+      new EqualFilter('r.id', id),
+    ];
+
+    const query = new FilterQueryBuilder<Reservation>(
+      this.createQueryBuilder('r')
+        .select([
+          'r.id',
+          'r.status',
+          'r.checkIn',
+          'r.checkOut',
+          'r.expiresAt',
+          'ro.roomNumber',
+          'ro.type',
+          'ho.name',
+          'lo.name',
+        ])
+        .innerJoin('r.room', 'ro')
+        .innerJoin('ro.hotel', 'ho')
+        .innerJoin('ho.location', 'lo'),
+    );
+
+    return query.withQuery(filters).getOne();
   }
 
   async createReservation(
@@ -54,8 +122,7 @@ export class ReservationsRepository extends Repository<Reservation> {
   ): Promise<TResult<{ id: string; status: ReservationStatus }>> {
     return this.manager.transaction(async (manager) => {
       const reservationsRepository = manager.getRepository(Reservation);
-      const createdAt = new Date();
-      const expiresAt = new Date().setMinutes(createdAt.getMinutes() + 10);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       try {
         const reservation = await reservationsRepository.save(
           reservationsRepository.create({
@@ -72,10 +139,13 @@ export class ReservationsRepository extends Repository<Reservation> {
           status: reservation.status,
         });
       } catch (exception) {
-        if (exception === '23P01') {
-          // exclusion constraint violation
+        if (
+          exception instanceof QueryFailedError &&
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          exception.driverError.code === '23P01'
+        ) {
           return Result.Failure(
-            'Room is not available for selected dates',
+            'room is not available for selected dates',
             'CONFLICT_ERROR',
           );
         }

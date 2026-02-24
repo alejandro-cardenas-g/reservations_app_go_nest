@@ -1,5 +1,6 @@
 import { Result, TResult } from '@app/common/classes';
 import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
@@ -12,6 +13,7 @@ import { OAuthProvider } from 'src/auth/types/oauthProviders.type';
 const GOOGLE_OAUTH2_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
+@Injectable()
 export class GoogleProvider implements IOauthProvider {
   constructor(
     private readonly httpService: HttpService,
@@ -41,12 +43,15 @@ export class GoogleProvider implements IOauthProvider {
     const secret = this.configService.getOrThrow<string>(
       'GOOGLE_CLIENT_SECRET',
     );
+    const redirectUri = this.configService.getOrThrow<string>(
+      'GOOGLE_REDIRECT_URI',
+    );
 
     const params = new URLSearchParams({
       code,
       client_id: clientId,
       client_secret: secret,
-      redirect_uri: 'http://localhost:8000/auth/oauth2/callback',
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     });
 

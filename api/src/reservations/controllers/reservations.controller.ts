@@ -5,6 +5,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  InternalServerErrorException,
   NotFoundException,
   Param,
   Post,
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '@app/common/auth/guards';
 import { GetUser } from '@app/common/auth/decorators';
 import { AuthUser } from '@app/common/types';
 import { CreateReservationDto } from '../dtos/create-reservation.dto';
+import { GetReservationsDto } from '../dtos/get-reservations.dto';
 
 @Controller({
   path: 'reservations',
@@ -25,16 +27,8 @@ export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   @Get('availability')
-  async checkAvailability(
-    @Query('roomId') roomId: string,
-    @Query('checkIn') checkIn: string,
-    @Query('checkOut') checkOut: string,
-  ) {
-    if (!roomId || !checkIn || !checkOut) {
-      throw new BadRequestException(
-        'roomId, checkIn and checkOut are required',
-      );
-    }
+  async checkAvailability(@Query() dto: CreateReservationDto) {
+    const { roomId, checkIn, checkOut } = dto;
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
@@ -73,15 +67,15 @@ export class ReservationsController {
       if (result.code === 'CONFLICT_ERROR') {
         throw new ConflictException(result.error);
       }
-      throw new BadRequestException(result.error);
+      throw new InternalServerErrorException(result.error);
     }
     return result.value;
   }
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async list(@GetUser() user: AuthUser) {
-    return this.reservationsService.listByGuest(user.id);
+  async list(@GetUser() user: AuthUser, @Query() dto: GetReservationsDto) {
+    return this.reservationsService.listByGuest(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)

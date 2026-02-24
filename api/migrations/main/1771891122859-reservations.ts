@@ -3,12 +3,22 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class Reservations1771891122859 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
+      `CREATE TABLE IF NOT EXISTS public.locations (
+              id  SERIAL NOT NULL,
+              name VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+              CONSTRAINT "PK_location_id" PRIMARY KEY (id)
+          );`,
+    );
+
+    await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS public.hotels (
             id  UUID NOT NULL DEFAULT uuidv7(),
             name VARCHAR(255) NOT NULL,
-            location VARCHAR(255) NOT NULL,
+            location_id INTEGER NOT NULL,
             created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            CONSTRAINT "PK_hotel_id" PRIMARY KEY (id)
+            CONSTRAINT "PK_hotel_id" PRIMARY KEY (id),
+            CONSTRAINT "FK_hotel_location_id" FOREIGN KEY (location_id) REFERENCES locations(id)
         );`,
     );
 
@@ -53,6 +63,7 @@ export class Reservations1771891122859 implements MigrationInterface {
         CREATE INDEX IF NOT EXISTS idx_reservation_room ON reservations(room_id);
         CREATE INDEX IF NOT EXISTS idx_reservation_status ON reservations(status);
         CREATE INDEX IF NOT EXISTS idx_reservation_expiration ON reservations(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_reservation_guest_status_id_desc ON reservations (guest_id, status, id DESC);
     `);
 
     await queryRunner.query(`
@@ -80,6 +91,17 @@ export class Reservations1771891122859 implements MigrationInterface {
 
     await queryRunner.query(`
         DROP INDEX IF EXISTS idx_unique_room_hotel_id_room_number;
+    `);
+
+    await queryRunner.query(`
+        DROP INDEX IF EXISTS idx_reservation_guest_status_id_desc;
+    `);
+
+    await queryRunner.query(`
+        ALTER TABLE public.hotels DROP CONSTRAINT IF EXISTS "FK_hotel_location_id";
+    `);
+    await queryRunner.query(`
+        DROP TABLE IF EXISTS public.locations;
     `);
 
     await queryRunner.query(`

@@ -18,7 +18,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     context: ExecutionContext,
   ): AuthUser {
     const response = context.switchToHttp().getResponse<Response>();
-
     if (info instanceof TokenExpiredError) {
       response.setHeader(this.headerRefresh, 'refresh');
       throw new UnauthorizedException('errors.tokenExpired');

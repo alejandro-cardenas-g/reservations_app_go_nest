@@ -1,5 +1,7 @@
 import { Result, TResult } from '@app/common/classes';
 import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -8,62 +10,69 @@ import {
 } from 'src/auth/contracts/oauth2.contracts';
 import { OAuthProvider } from 'src/auth/types/oauthProviders.type';
 
-const clientId = '';
+const GITHUB_OAUTH2_URL = 'https://github.com/login/oauth/authorize';
 
-const redirectUri = 'http://localhost:8000/auth/oauth2/callback';
+const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
-const secret = '';
-
-const GOOGLE_OAUTH2_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-
-const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-
+@Injectable()
 export class GithubProvider implements IOauthProvider {
   constructor(
     private readonly httpService: HttpService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   getLoginUrl(): string {
-    const url = new URL(GOOGLE_OAUTH2_URL);
+    const url = new URL(GITHUB_OAUTH2_URL);
+
+    const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
+    const redirectUri = this.configService.getOrThrow<string>(
+      'GITHUB_REDIRECT_URI',
+    );
 
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('redirect_uri', redirectUri);
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', 'email profile');
-    url.searchParams.set('state', 'google' as OAuthProvider);
+    url.searchParams.set('scope', 'user:email');
+    url.searchParams.set('state', 'github' as OAuthProvider);
 
     return url.toString();
   }
 
   async getAccessToken(code: string): Promise<TResult<string>> {
+    const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
+    const secret = this.configService.getOrThrow<string>(
+      'GITHUB_CLIENT_SECRET',
+    );
+    const redirectUri = this.configService.getOrThrow<string>(
+      'GITHUB_REDIRECT_URI',
+    );
     const params = new URLSearchParams({
       code,
       client_id: clientId,
       client_secret: secret,
-      redirect_uri: 'http://localhost:8000/auth/oauth2/callback',
-      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
     });
 
     const resultToken: TResult<string> = await firstValueFrom(
-      this.httpService.post<{ id_token: string }, unknown>(
-        GOOGLE_TOKEN_URL,
+      this.httpService.post<{ access_token: string }, unknown>(
+        GITHUB_TOKEN_URL,
         params,
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
           },
         },
       ),
     )
       .then((response) => {
-        if (response.status !== 200 || !response.data.id_token) {
+        if (response.status !== 200 || !response.data.access_token) {
           return Result.Failure<string>(
             'auth.errors.invalidAccessError',
             'UNAUTHORIZED_ERROR',
           );
         }
-        return Result.Success<string>(response.data.id_token);
+        return Result.Success<string>(response.data.access_token);
       })
       .catch(() => {
         return Result.Failure(
@@ -75,17 +84,39 @@ export class GithubProvider implements IOauthProvider {
     return resultToken;
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async getUserInfo(accessToken: string): Promise<TResult<OAuthUserInfo>> {
     try {
-      const payload = this.jwtService.decode<{ email: string }>(accessToken);
-      if (!payload) {
+      const payload = await firstValueFrom(
+        this.httpService.get<{ email: string; primary: boolean }[]>(
+          'https://api.github.com/user/emails',
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        ),
+      );
+      if (
+        !payload.data ||
+        payload.status !== 200 ||
+        payload.data.length === 0
+      ) {
         return Result.Failure(
           'auth.errors.invalidAccessError',
           'UNAUTHORIZED_ERROR',
         );
       }
-      return Result.Success({ email: payload.email });
+
+      const email = payload.data.find((email) => email.primary)?.email;
+
+      if (!email) {
+        return Result.Failure(
+          'auth.errors.invalidAccessError',
+          'UNAUTHORIZED_ERROR',
+        );
+      }
+
+      return Result.Success({ email });
     } catch {
       return Result.Failure(
         'auth.errors.invalidAccessError',
