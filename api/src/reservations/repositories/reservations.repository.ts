@@ -13,6 +13,8 @@ import {
 import { FilterQueryBuilder } from '@app/common/database/utils/filterQueryBuilder.util';
 import { GetReservationsDto } from '../dtos/get-reservations.dto';
 import { AbstractFilter } from '@app/common/filters/abstract.filter';
+import { OutboxRepositoryCreator } from 'src/outbox/repositories/outbox.repository';
+import { ReservationEvents } from '../types/reservation-events';
 
 const ACTIVE_STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED'];
 
@@ -126,6 +128,7 @@ export class ReservationsRepository extends Repository<Reservation> {
       try {
         return await this.manager.transaction(async (manager) => {
           const repo = manager.getRepository(Reservation);
+          const outboxRepo = OutboxRepositoryCreator.Create(manager);
 
           const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -139,6 +142,13 @@ export class ReservationsRepository extends Repository<Reservation> {
               expiresAt,
             }),
           );
+
+          await outboxRepo.publish({
+            aggregateType: 'reservation',
+            aggregateId: reservation.id,
+            eventType: 'reservation_created' satisfies ReservationEvents,
+            payload: {},
+          });
 
           return Result.Success({
             id: reservation.id,

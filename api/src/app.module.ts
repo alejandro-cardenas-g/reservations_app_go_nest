@@ -21,6 +21,7 @@ import { OutboxModule } from './outbox/outbox.module';
         ...AuthModule.DatabaseModules(),
         ...HotelsModule.DatabaseModules(),
         ...ReservationsModule.DatabaseModules(),
+        ...OutboxModule.DatabaseModules(),
       ],
     }),
     AuthModule,

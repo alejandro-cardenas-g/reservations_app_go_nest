@@ -1,23 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
 import { OutboxEvent } from '../entities/outbox.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DB_CONNECTIONS } from '@app/common/configuration/constants';
-import { IOutboxRepository } from '../contracts/outbox.contracts';
+import {
+  CreateOutboxCommand,
+  IOutboxRepository,
+} from '../contracts/outbox.contracts';
 
-@Injectable()
-export class OutboxRepository
-  extends Repository<OutboxEvent>
-  implements IOutboxRepository
-{
-  constructor(
-    @InjectRepository(OutboxEvent, DB_CONNECTIONS.MAIN)
-    dataAccess: Repository<OutboxEvent>,
-  ) {
-    super(OutboxEvent, dataAccess.manager, dataAccess.queryRunner);
+export class OutboxRepositoryCreator implements IOutboxRepository {
+  private constructor(private readonly manager: EntityManager) {}
+
+  public static Create(manager: EntityManager): IOutboxRepository {
+    return new OutboxRepositoryCreator(manager);
   }
 
-  async save(outboxEvent: OutboxEvent): Promise<void> {
-    await this.save(outboxEvent);
+  async publish(command: CreateOutboxCommand): Promise<void> {
+    const repo = this.manager.getRepository(OutboxEvent);
+    await repo.save(
+      repo.create({
+        ...command,
+        status: 'PENDING',
+        retryCount: 0,
+        publishedAt: new Date(),
+      }),
+    );
   }
 }

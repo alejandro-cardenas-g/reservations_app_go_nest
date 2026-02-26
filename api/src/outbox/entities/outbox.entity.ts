@@ -12,7 +12,7 @@ export class OutboxEvent extends AuditableEntity {
   id: string;
 
   @Column('character varying', {
-    name: 'name',
+    name: 'aggregate_type',
     length: 50,
     nullable: false,
   })

@@ -1,5 +1,10 @@
-import { OutboxEvent } from '../entities/outbox.entity';
+export type CreateOutboxCommand = {
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+};
 
 export interface IOutboxRepository {
-  save(outboxEvent: OutboxEvent): Promise<void>;
+  publish(outboxEvent: CreateOutboxCommand): Promise<void>;
 }
