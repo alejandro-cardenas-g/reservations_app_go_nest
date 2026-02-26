@@ -14,6 +14,7 @@ export const databaseEnvironments: Record<DatabaseEnvironments, string> = {
 export const serverEnvironment: Record<ServerEnvironments, string> = {
   PORT: 'PORT',
   NODE_ENV: 'NODE_ENV',
+  HOST_TOKEN: 'HOST_TOKEN',
 } as const;
 
 export const authEnvironments = {

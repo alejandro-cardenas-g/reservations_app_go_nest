@@ -34,6 +34,9 @@ export class MainConnectionFactory implements IConnectionFactory {
       entities: opts.models,
       synchronize: false,
       autoLoadEntities: false,
+      poolSize: 3,
+      applicationName: 'reservations.api',
+      connectTimeoutMS: 10_000,
       ssl:
         process.env.DB_SSL === '0'
           ? undefined

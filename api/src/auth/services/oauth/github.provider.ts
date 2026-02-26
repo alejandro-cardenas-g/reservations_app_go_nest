@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
 import {
-  IOauthProvider,
+  IOauthProviderStrategy,
   OAuthUserInfo,
 } from 'src/auth/contracts/oauth2.contracts';
 import { OAuthProvider } from 'src/auth/types/oauthProviders.type';
@@ -15,7 +15,7 @@ const GITHUB_OAUTH2_URL = 'https://github.com/login/oauth/authorize';
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
 @Injectable()
-export class GithubProvider implements IOauthProvider {
+export class GithubProvider implements IOauthProviderStrategy {
   constructor(
     private readonly httpService: HttpService,
     private readonly jwtService: JwtService,

@@ -21,10 +21,9 @@ export class Oauth2Service {
   ) {}
 
   login(provider: OAuthProvider): TResult<string> {
-    const providerOauth = this.managerProvider.getProvider(provider);
-    if (!providerOauth) {
-      return Result.Failure('Unknown provider');
-    }
+    const providerOauthResult = this.managerProvider.getProvider(provider);
+    if (!providerOauthResult.isSuccess) return providerOauthResult;
+    const providerOauth = providerOauthResult.value;
 
     const result = providerOauth.getLoginUrl();
     return Result.Success(result);
@@ -34,10 +33,9 @@ export class Oauth2Service {
     code: string,
     state: OAuthProvider,
   ): Promise<TResult<GetAuthAccessTokensResult>> {
-    const providerOauth = this.managerProvider.getProvider(state);
-    if (!providerOauth) {
-      return Result.Failure('Unknown provider');
-    }
+    const providerOauthResult = this.managerProvider.getProvider(state);
+    if (!providerOauthResult.isSuccess) return providerOauthResult;
+    const providerOauth = providerOauthResult.value;
 
     const tokenResult = await providerOauth.getAccessToken(code);
 

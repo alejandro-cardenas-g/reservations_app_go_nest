@@ -65,7 +65,7 @@ export class AuthController {
       result.value.refreshTokenExpiresAt,
     );
 
-    return result.value;
+    return { accessToken: result.value.accessToken };
   }
 
   @Get('callback')

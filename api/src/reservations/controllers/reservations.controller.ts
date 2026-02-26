@@ -18,6 +18,7 @@ import { GetUser } from '@app/common/auth/decorators';
 import { AuthUser } from '@app/common/types';
 import { CreateReservationDto } from '../dtos/create-reservation.dto';
 import { GetReservationsDto } from '../dtos/get-reservations.dto';
+import { DateConverter } from '../utils/dateConverter.util';
 
 @Controller({
   path: 'reservations',
@@ -29,8 +30,8 @@ export class ReservationsController {
   @Get('availability')
   async checkAvailability(@Query() dto: CreateReservationDto) {
     const { roomId, checkIn, checkOut } = dto;
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
+    const checkInDate = DateConverter.FromISO8601(checkIn);
+    const checkOutDate = DateConverter.FromISO8601(checkOut);
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
       throw new BadRequestException('Invalid checkIn or checkOut date');
     }
@@ -52,8 +53,8 @@ export class ReservationsController {
   @HttpCode(201)
   @Post()
   async create(@GetUser() user: AuthUser, @Body() dto: CreateReservationDto) {
-    const checkIn = new Date(dto.checkIn);
-    const checkOut = new Date(dto.checkOut);
+    const checkIn = DateConverter.FromISO8601(dto.checkIn);
+    const checkOut = DateConverter.FromISO8601(dto.checkOut);
     const result = await this.reservationsService.create(
       user.id,
       dto.roomId,

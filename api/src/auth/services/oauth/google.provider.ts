@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
 import {
-  IOauthProvider,
+  IOauthProviderStrategy,
   OAuthUserInfo,
 } from 'src/auth/contracts/oauth2.contracts';
 import { OAuthProvider } from 'src/auth/types/oauthProviders.type';
@@ -14,7 +14,7 @@ const GOOGLE_OAUTH2_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 @Injectable()
-export class GoogleProvider implements IOauthProvider {
+export class GoogleProvider implements IOauthProviderStrategy {
   constructor(
     private readonly httpService: HttpService,
     private readonly jwtService: JwtService,

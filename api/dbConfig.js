@@ -20,7 +20,7 @@ const dataSource = new DataSource({
   entities: [],
   migrations: [resolve(__dirname, './migrations/main/*{.ts,.js}')],
   subscribers: [],
-  poolSize: 10,
+  poolSize: 1,
   applicationName: 'reservations.api',
   connectTimeoutMS: 10_000,
   ssl:

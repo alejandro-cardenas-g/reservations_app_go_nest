@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { IOauthProvider } from '../../contracts/oauth2.contracts';
+import { Result, TResult } from '@app/common/classes';
+import { Injectable } from '@nestjs/common';
+import { IOauthProviderStrategy } from '../../contracts/oauth2.contracts';
 import { OAuthProvider } from '../../types/oauthProviders.type';
 import { GithubProvider } from './github.provider';
 import { GoogleProvider } from './google.provider';
@@ -11,22 +12,16 @@ import { GoogleProvider } from './google.provider';
  */
 @Injectable()
 export class ManagerProvider {
-  private readonly logger = new Logger(ManagerProvider.name);
-  constructor(
-    private readonly googleProvider: GoogleProvider,
-    private readonly githubProvider: GithubProvider,
-  ) {}
+  private strategies: Map<OAuthProvider, IOauthProviderStrategy>;
+  constructor(googleProvider: GoogleProvider, githubProvider: GithubProvider) {
+    this.strategies = new Map();
+    this.strategies.set('google', googleProvider);
+    this.strategies.set('github', githubProvider);
+  }
 
-  getProvider(provider: OAuthProvider): IOauthProvider | null {
-    switch (provider) {
-      case 'google':
-        return this.googleProvider;
-      case 'github':
-        return this.githubProvider;
-      default: {
-        this.logger.error('Unknown OAuth provider');
-        return null;
-      }
-    }
+  getProvider(provider: OAuthProvider): TResult<IOauthProviderStrategy> {
+    const strategy = this.strategies.get(provider);
+    if (!strategy) return Result.Failure('Unknown provider', 'INVALID_ERROR');
+    return Result.Success(strategy);
   }
 }

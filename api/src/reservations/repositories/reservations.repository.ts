@@ -120,41 +120,59 @@ export class ReservationsRepository extends Repository<Reservation> {
     checkIn: Date,
     checkOut: Date,
   ): Promise<TResult<{ id: string; status: ReservationStatus }>> {
-    return this.manager.transaction(async (manager) => {
-      const reservationsRepository = manager.getRepository(Reservation);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const MAX_RETRY = 3;
+
+    for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
       try {
-        const reservation = await reservationsRepository.save(
-          reservationsRepository.create({
-            roomId,
-            guestId,
-            checkIn,
-            checkOut,
-            status: 'PENDING',
-            expiresAt,
-          }),
-        );
-        return Result.Success({
-          id: reservation.id,
-          status: reservation.status,
+        return await this.manager.transaction(async (manager) => {
+          const repo = manager.getRepository(Reservation);
+
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+          const reservation = await repo.save(
+            repo.create({
+              roomId,
+              guestId,
+              checkIn,
+              checkOut,
+              status: 'PENDING',
+              expiresAt,
+            }),
+          );
+
+          return Result.Success({
+            id: reservation.id,
+            status: reservation.status,
+          });
         });
       } catch (exception) {
-        if (
-          exception instanceof QueryFailedError &&
+        if (exception instanceof QueryFailedError) {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          exception.driverError.code === '23P01'
-        ) {
-          return Result.Failure(
-            'room is not available for selected dates',
-            'CONFLICT_ERROR',
-          );
+          const errorCode = exception.driverError.code as string;
+
+          if (errorCode === '40P01') {
+            continue; // must retry the entire transaction because of concurrent reservation
+          }
+
+          if (errorCode === '23P01') {
+            return Result.Failure(
+              'room is not available for selected dates',
+              'CONFLICT_ERROR',
+            );
+          }
         }
+
         console.error(exception);
         return Result.Failure(
           'an error occurred while creating the reservation',
           'UNEXPECTED_ERROR',
         );
       }
-    });
+    }
+
+    return Result.Failure(
+      'an error occurred while creating the reservation',
+      'UNEXPECTED_ERROR',
+    );
   }
 }
