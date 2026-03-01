@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "load-envrc",
+      "type": "shell",
+      "command": "source ${workspaceFolder}/workers/.envrc && env > ${workspaceFolder}/workers/.env.tmp",
+      "problemMatcher": []
+    }
+  ]
+}
