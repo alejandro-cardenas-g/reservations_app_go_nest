@@ -60,3 +60,5 @@ api/node_modules/
 api/dist/
 api/.envrc
 api/postgres/
+
+workers/.envrc

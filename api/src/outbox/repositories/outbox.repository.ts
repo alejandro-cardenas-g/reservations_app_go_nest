@@ -19,7 +19,6 @@ export class OutboxRepositoryCreator implements IOutboxRepository {
         ...command,
         status: 'PENDING',
         retryCount: 0,
-        publishedAt: new Date(),
       }),
     );
   }

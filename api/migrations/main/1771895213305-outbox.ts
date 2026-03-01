@@ -5,7 +5,8 @@ export class Outbox1771895213305 implements MigrationInterface {
     await queryRunner.query(`
         CREATE TYPE event_status AS ENUM (
             'PENDING',
-            'PUBLISHED',
+            'COMPLETED',
+            'PROCESSING',
             'FAILED'
         );
 
@@ -17,8 +18,8 @@ export class Outbox1771895213305 implements MigrationInterface {
             payload JSONB NOT NULL,
             status event_status NOT NULL DEFAULT 'PENDING',
             retry_count INT NOT NULL DEFAULT 0,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            published_at TIMESTAMP
+            next_retry_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
 
         CREATE INDEX IF NOT EXISTS idx_outbox_status ON public.outbox_events(status);

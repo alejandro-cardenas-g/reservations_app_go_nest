@@ -52,8 +52,8 @@ export class OutboxEvent extends AuditableEntity {
   retryCount: number;
 
   @Column('timestamp', {
-    name: 'published_at',
-    nullable: true,
+    name: 'next_retry_at',
+    nullable: false,
   })
-  publishedAt: Date;
+  nextRetryAt: Date;
 }
