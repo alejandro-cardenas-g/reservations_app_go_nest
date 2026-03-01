@@ -62,3 +62,4 @@ api/.envrc
 api/postgres/
 
 workers/.envrc
+workers/.env.tmp
