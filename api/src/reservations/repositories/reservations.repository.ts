@@ -130,29 +130,41 @@ export class ReservationsRepository extends Repository<Reservation> {
           const repo = manager.getRepository(Reservation);
           const outboxRepo = OutboxRepositoryCreator.Create(manager);
 
-          const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-          const reservation = await repo.save(
-            repo.create({
-              roomId,
-              guestId,
-              checkIn,
-              checkOut,
+          const result = await repo
+            .createQueryBuilder()
+            .insert()
+            .into(Reservation)
+            .values({
+              guestId: guestId,
+              roomId: roomId,
+              checkIn: checkIn,
+              checkOut: checkOut,
               status: 'PENDING',
-              expiresAt,
-            }),
-          );
+              expiresAt: () => "now() + interval '10 minutes'",
+            })
+            .returning('*')
+            .execute();
+
+          const reservation = result.generatedMaps[0] as Reservation;
 
           await outboxRepo.publish({
             aggregateType: 'reservation',
             aggregateId: reservation.id,
             eventType: 'reservation_created' satisfies ReservationEvents,
-            payload: {},
+            payload: {
+              reservationId: reservation.id,
+              roomId: reservation.roomId,
+              guestId: reservation.guestId,
+              checkIn: reservation.checkIn,
+              checkOut: reservation.checkOut,
+              expiresAt: reservation.expiresAt,
+              status: reservation.status,
+            },
           });
 
           return Result.Success({
             id: reservation.id,
-            status: reservation.status,
+            status: 'PENDING',
           });
         });
       } catch (exception) {
@@ -184,5 +196,43 @@ export class ReservationsRepository extends Repository<Reservation> {
       'an error occurred while creating the reservation',
       'UNEXPECTED_ERROR',
     );
+  }
+
+  async cancelReservation(
+    id: string,
+    guestId: string,
+  ): Promise<TResult<boolean>> {
+    try {
+      return await this.manager.transaction(async (manager) => {
+        const repo = manager.getRepository(Reservation);
+        const outboxRepo = OutboxRepositoryCreator.Create(manager);
+
+        const result = await repo.update(
+          { id, guestId },
+          { status: 'CANCELLED' },
+        );
+
+        if (result.affected === 0) {
+          return Result.Failure('reservation not found', 'RESOURCE_NOT_FOUND');
+        }
+
+        await outboxRepo.publish({
+          aggregateType: 'reservation',
+          aggregateId: id,
+          eventType: 'reservation_cancelled' satisfies ReservationEvents,
+          payload: {
+            reservationId: id,
+            guestId: guestId,
+          },
+        });
+
+        return Result.Success(true);
+      });
+    } catch {
+      return Result.Failure(
+        'an error occurred while creating the reservation',
+        'UNEXPECTED_ERROR',
+      );
+    }
   }
 }

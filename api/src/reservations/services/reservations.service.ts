@@ -79,4 +79,12 @@ export class ReservationsService {
       ReservationResultUtil.fromEntity(reservation),
     );
   }
+
+  async cancel(id: string, guestId: string): Promise<TResult<boolean>> {
+    const result = await this.reservationsRepository.cancelReservation(
+      id,
+      guestId,
+    );
+    return result;
+  }
 }

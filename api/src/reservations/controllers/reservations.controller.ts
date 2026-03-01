@@ -3,6 +3,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
   HttpCode,
   InternalServerErrorException,
@@ -19,6 +20,7 @@ import { AuthUser } from '@app/common/types';
 import { CreateReservationDto } from '../dtos/create-reservation.dto';
 import { GetReservationsDto } from '../dtos/get-reservations.dto';
 import { DateConverter } from '../utils/dateConverter.util';
+import { ParseUUIDCustomPipe } from '@app/common/pipes/parseUUIDCustom.pipe';
 
 @Controller({
   path: 'reservations',
@@ -81,8 +83,25 @@ export class ReservationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getById(@Param('id') id: string, @GetUser() user: AuthUser) {
+  async getById(
+    @Param('id', new ParseUUIDCustomPipe('id is invalid')) id: string,
+    @GetUser() user: AuthUser,
+  ) {
     const result = await this.reservationsService.getById(id, user.id);
+    if (!result.isSuccess) {
+      throw new NotFoundException(result.error);
+    }
+    return result.value;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(204)
+  @Delete(':id')
+  async cancel(
+    @Param('id', new ParseUUIDCustomPipe('id is invalid')) id: string,
+    @GetUser() user: AuthUser,
+  ) {
+    const result = await this.reservationsService.cancel(id, user.id);
     if (!result.isSuccess) {
       throw new NotFoundException(result.error);
     }
