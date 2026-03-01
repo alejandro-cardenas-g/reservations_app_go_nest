@@ -19,7 +19,7 @@ func (r *OutboxRepository) GetPendingEvents(ctx context.Context) ([]domain.Outbo
 	defer cancel()
 
 	query := `
-		SELECT * FROM outbox_events WHERE status = 'PENDING' AND next_retry_at <= NOW() LIMIT 100 FOR UPDATE SKIP LOCKED;
+		SELECT id, aggregate_type, aggregate_id, event_type, payload, status, retry_count, next_retry_at FROM outbox_events WHERE status = 'PENDING' AND next_retry_at <= NOW() LIMIT 100 FOR UPDATE SKIP LOCKED;
 	`
 	rows, err := r.dbx.Query(ctx, query)
 
@@ -62,7 +62,7 @@ func (r *OutboxRepository) SetPendingById(ctx context.Context, id string) error 
 	defer cancel()
 
 	query := `
-		UPDATE outbox_events SET status = $1, retry_count = retry_count + 1, next_retry_at = now() + INTERVAL '1 minute' WHERE id = $3;
+		UPDATE outbox_events SET status = $1, retry_count = retry_count + 1, next_retry_at = now() + INTERVAL '1 minute' WHERE id = $2;
 	`
 	_, err := r.dbx.Exec(ctx, query, domain.OutboxStatusPending, id)
 	return err

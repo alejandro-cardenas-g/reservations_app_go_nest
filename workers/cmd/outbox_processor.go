@@ -2,28 +2,29 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"sync"
-	"time"
 	"workers/internal/config"
+	"workers/internal/services"
 	"workers/internal/store"
 
 	"go.uber.org/zap"
 )
 
 type OutboxProcessor struct {
-	store  *store.Store
-	logger *zap.Logger
-	config config.WorkerConfig
-	wg     *sync.WaitGroup
+	store          *store.Store
+	logger         *zap.Logger
+	config         config.WorkerConfig
+	wg             *sync.WaitGroup
+	publishService *services.PublishService
 }
 
 func NewOutboxProcessor(store *store.Store, config config.WorkerConfig, logger *zap.Logger) *OutboxProcessor {
 	return &OutboxProcessor{
-		store:  store,
-		config: config,
-		logger: logger,
-		wg:     &sync.WaitGroup{},
+		store:          store,
+		config:         config,
+		logger:         logger,
+		wg:             &sync.WaitGroup{},
+		publishService: services.NewPublishService(store, logger),
 	}
 }
 
@@ -40,8 +41,9 @@ func (p *OutboxProcessor) Run(ctx context.Context) {
 }
 
 func (p *OutboxProcessor) processBatch(ctx context.Context) (int, error) {
-	fmt.Println("Processing batch")
-	time.Sleep(3 * time.Second)
-	fmt.Println("Batch processed")
+	err := p.publishService.Process(ctx)
+	if err != nil {
+		return 0, err
+	}
 	return 0, nil
 }

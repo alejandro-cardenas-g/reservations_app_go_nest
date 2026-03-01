@@ -1,7 +1,8 @@
-package service
+package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 	"workers/internal/domain"
@@ -18,8 +19,8 @@ type PublishService struct {
 	logger    *zap.Logger
 }
 
-func NewPublishService(store *store.Store) *PublishService {
-	return &PublishService{outbox: store.Outbox}
+func NewPublishService(store *store.Store, logger *zap.Logger) *PublishService {
+	return &PublishService{outbox: store.Outbox, txManager: store.TxManager, logger: logger}
 }
 
 func (s *PublishService) Process(ctx context.Context) error {
@@ -69,19 +70,23 @@ func (s *PublishService) Process(ctx context.Context) error {
 }
 
 func (s *PublishService) processEvent(ctx context.Context, event domain.OutboxEvent) {
-
 	var err error
-	fmt.Println("Processing event", event.ID)
+	if event.EventType == "error_event" {
+		err = errors.New("error_event")
+	}
+	fmt.Println("sending event to queue", event.ID)
 	time.Sleep(3 * time.Second)
 
 	if err != nil {
 		if event.RetryCount+1 > MAX_RETRY_COUNT {
 			s.outbox.SetFailedById(ctx, event.ID)
+			s.logger.Info("event failed", zap.String("event_id", event.ID), zap.String("reasons", "max retries reached"))
 			return
 		}
 		s.outbox.SetPendingById(ctx, event.ID)
 		return
 	}
 
+	s.logger.Info("event completed", zap.String("event_id", event.ID))
 	s.outbox.SetCompletedById(ctx, event.ID)
 }

@@ -11,8 +11,9 @@ import (
 )
 
 type Store struct {
-	TxManager *TxManager
-	Outbox    *OutboxRepository
+	TxManager    *TxManager
+	Outbox       *OutboxRepository
+	Reservations *ReservationsRepository
 }
 
 func NewStore(cfg config.StoreConfig) *Store {
@@ -45,5 +46,6 @@ func NewStore(cfg config.StoreConfig) *Store {
 
 	store.Outbox = NewOutboxRepository(pool)
 	store.TxManager = NewTxManager(pool)
+	store.Reservations = NewReservationsRepository(pool)
 	return store
 }
