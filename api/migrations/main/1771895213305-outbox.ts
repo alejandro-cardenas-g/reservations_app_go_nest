@@ -19,7 +19,8 @@ export class Outbox1771895213305 implements MigrationInterface {
             status event_status NOT NULL DEFAULT 'PENDING',
             retry_count INT NOT NULL DEFAULT 0,
             next_retry_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            CONSTRAINT "PK_outbox_event_id" PRIMARY KEY (id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_outbox_status ON public.outbox_events(status);
